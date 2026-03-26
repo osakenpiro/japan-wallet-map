@@ -21,7 +21,7 @@ h1{font-size:20px;font-weight:500;}
 #pb{font-size:12px;padding:5px 16px;background:none;border:1px solid var(--bd);border-radius:6px;color:var(--tx);cursor:pointer;}
 .row{display:flex;gap:8px;align-items:flex-start;}
 #mp{flex:1;}
-.bk-wrap{width:52px;flex-shrink:0;padding-top:10px;}
+.bk-wrap{width:52px;flex-shrink:0;display:flex;align-items:stretch;}
 .stats{display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
 .stat{background:var(--card);border-radius:8px;padding:8px 12px;flex:1;min-width:100px;}
 .stat .lb{font-size:10px;color:var(--tx3);}
@@ -59,7 +59,7 @@ h1{font-size:20px;font-weight:500;}
 </div>
 <div class="row">
 <div id="mp"></div>
-<div class="bk-wrap"><svg id="bk" viewBox="0 0 52 500" width="52" style="display:block;"></svg></div>
+<div class="bk-wrap"><svg id="bk" viewBox="0 0 52 500" width="52" height="500" style="display:block;"></svg></div>
 </div>
 <p class="src">出典: 国勢調査(1920-2020)、国立社会保障・人口問題研究所(将来推計)、総務省「市町村別決算状況調」R4。近世以前の人口は鬼頭宏『人口から読む日本の歴史』等の推計。</p>
 <div class="ft"><a href="https://osakenpiro.github.io/boku-no-wakusei/" target="_blank">osakenpiro</a> / 『学問のすすめ -ルネサンス-』</div>
@@ -154,8 +154,6 @@ var bk=d3.select('#bk');
 var BK_T=40,BK_B=460,BK_H=BK_B-BK_T,BK_X=26,BK_W=22,BK_MAX=14000;
 bk.append('rect').attr('x',BK_X-BK_W/2).attr('y',BK_T).attr('width',BK_W).attr('height',BK_H)
   .attr('fill','none').attr('stroke',dk?'#555':'#bbb').attr('stroke-width',1.2).attr('rx',4);
-bk.append('rect').attr('id','bkFill').attr('x',BK_X-BK_W/2+1.5).attr('width',BK_W-3).attr('rx',3)
-  .attr('fill',dk?'rgba(216,90,48,0.35)':'rgba(216,90,48,0.25)');
 var okuY=BK_B-BK_H*(10000/BK_MAX);
 bk.append('line').attr('x1',BK_X-BK_W/2-6).attr('x2',BK_X+BK_W/2+6).attr('y1',okuY).attr('y2',okuY)
   .attr('stroke','#E24B4A').attr('stroke-width',1.8).attr('stroke-dasharray','4,2');
@@ -197,9 +195,27 @@ function getModPop(pref,y){
 function getEra(y){for(var i=ERAS.length-1;i>=0;i--){if(y>=ERAS[i].start)return ERAS[i];}return ERAS[0];}
 function bubbleR(pop){return Math.sqrt(pop)*0.25;}
 
-function updateBeaker(totalPop){
+function updateBeaker(totalPop, capitalPop, era){
   var fillH=BK_H*Math.min(1,totalPop/BK_MAX);
-  d3.select('#bkFill').attr('y',BK_B-fillH).attr('height',fillH);
+  var capH=capitalPop?BK_H*Math.min(1,capitalPop/BK_MAX):0;
+  var restH=fillH-capH;
+  var eraColors={
+    '飛鳥時代':'#97C459','奈良時代':'#97C459','平安時代':'#B07CC6',
+    '鎌倉時代':'#5A9BD5','室町時代':'#B07CC6','安土桃山':'#EF9F27',
+    '江戸時代':'#5A9BD5','明治以降':'#D85A30'
+  };
+  var capColor=eraColors[era.name]||'#D85A30';
+  d3.select('#bkFill').remove();d3.select('#bkCapFill').remove();
+  bk.insert('rect','#bkLbl').attr('id','bkFill')
+    .attr('x',BK_X-BK_W/2+1.5).attr('width',BK_W-3).attr('rx',3)
+    .attr('y',BK_B-fillH).attr('height',restH>0?restH:fillH)
+    .attr('fill',dk?'rgba(150,150,150,0.25)':'rgba(150,150,150,0.2)');
+  if(capH>0){
+    bk.insert('rect','#bkLbl').attr('id','bkCapFill')
+      .attr('x',BK_X-BK_W/2+1.5).attr('width',BK_W-3).attr('rx',0)
+      .attr('y',BK_B-capH).attr('height',capH)
+      .attr('fill',capColor).attr('fill-opacity',dk?0.5:0.4);
+  }
   d3.select('#bkLbl').text(Math.round(totalPop/10)+'\u4E07');
 }
 
@@ -244,7 +260,7 @@ function upd(){
 
   if(y<1920){
     var hp=getHistPop(y);
-    updateBeaker(hp);
+    updateBeaker(hp,Math.round(hp*0.08),era);
     document.getElementById('sPop').textContent=Math.round(hp/10)+'\u4E07\u4EBA';
     document.getElementById('sTokyo').textContent='\u2014';
     document.getElementById('sCenter').textContent=era.center;
@@ -279,7 +295,7 @@ function upd(){
 
   var totalPop=data.reduce(function(s,d){return s+d.pop;},0);
   var tokyoPop=data.filter(function(d){return TOKYO_CODES.indexOf(d.pref.c)>=0;}).reduce(function(s,d){return s+d.pop;},0);
-  updateBeaker(totalPop);
+  updateBeaker(totalPop,tokyoPop,era);
   document.getElementById('sPop').textContent=Math.round(totalPop/10)+'\u4E07\u4EBA';
   document.getElementById('sTokyo').textContent=Math.round(tokyoPop/totalPop*100)+'%';
   document.getElementById('sCenter').textContent=era.center;
