@@ -151,10 +151,10 @@ var P=[
 var TOKYO_CODES=["13","14","11","12"];
 
 var bk=d3.select('#bk');
-var BK_T=40,BK_B=460,BK_H=BK_B-BK_T,BK_X=26,BK_W=22,BK_MAX=14000;
+var BK_T=40,BK_B=460,BK_H=BK_B-BK_T,BK_X=26,BK_W=22,BK_MAX=140000;
 bk.append('rect').attr('x',BK_X-BK_W/2).attr('y',BK_T).attr('width',BK_W).attr('height',BK_H)
   .attr('fill','none').attr('stroke',dk?'#555':'#bbb').attr('stroke-width',1.2).attr('rx',4);
-var okuY=BK_B-BK_H*(10000/BK_MAX);
+var okuY=BK_B-BK_H*(100000/BK_MAX);
 bk.append('line').attr('x1',BK_X-BK_W/2-6).attr('x2',BK_X+BK_W/2+6).attr('y1',okuY).attr('y2',okuY)
   .attr('stroke','#E24B4A').attr('stroke-width',1.8).attr('stroke-dasharray','4,2');
 bk.append('text').attr('x',BK_X).attr('y',okuY-6).attr('text-anchor','middle')
@@ -163,7 +163,7 @@ bk.append('text').attr('id','bkLbl').attr('x',BK_X).attr('y',BK_T-10).attr('text
   .attr('font-size','11px').attr('font-weight','500').attr('fill',dk?'#eee':'#1a1a1a');
 bk.append('text').attr('x',BK_X).attr('y',BK_B+18).attr('text-anchor','middle')
   .attr('font-size','9px').attr('fill',dk?'#777':'#999').text('\u7DCF\u4EBA\u53E3');
-var bkTick5k=BK_B-BK_H*(5000/BK_MAX);
+var bkTick5k=BK_B-BK_H*(50000/BK_MAX);
 bk.append('line').attr('x1',BK_X-BK_W/2).attr('x2',BK_X+BK_W/2).attr('y1',bkTick5k).attr('y2',bkTick5k)
   .attr('stroke',dk?'#444':'#ccc').attr('stroke-width',0.5);
 bk.append('text').attr('x',BK_X+BK_W/2+3).attr('y',bkTick5k+3).attr('font-size','7px').attr('fill',dk?'#666':'#aaa').text('5000\u4E07');
