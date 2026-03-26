@@ -39,7 +39,10 @@ h1{font-size:20px;font-weight:500;}
 <p class="sub">人口と権力の1400年 — バブルの膨張で見る東京一極集中</p>
 <div class="ctrl">
   <label>年</label>
-  <input type="range" min="600" max="2050" value="2020" step="5" id="ys">
+  <div style="flex:1;min-width:140px;">
+    <input type="range" min="0" max="1000" value="846" step="1" id="ys" style="width:100%;">
+    <div id="eraBar" style="position:relative;height:14px;margin:-2px 9px 0;font-size:7px;color:var(--tx3);"></div>
+  </div>
   <span id="yv">2020</span>
   <span id="era"></span>
   <button id="pb">再生</button>
@@ -210,6 +213,19 @@ function showTT(html,ex,ey){
 
 var cY=2020,pl=false,tm=null;
 
+function sliderToYear(v){
+  if(v<=400)return Math.round(600+(v/400)*1320);
+  return Math.round(1920+((v-400)/600)*130);
+}
+function yearToSlider(y){
+  if(y<=1920)return Math.round((y-600)/1320*400);
+  return Math.round(400+(y-1920)/130*600);
+}
+function snapYear(y){
+  if(y<1920){return Math.round(y/25)*25;}
+  return Math.round(y/5)*5;
+}
+
 d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json').then(function(w){
   var ft=topojson.feature(w,w.objects.countries).features;
   var jp=ft.find(function(f){return f.id==='392';});
@@ -322,18 +338,41 @@ function upd(){
 }
 
 var sl=document.getElementById('ys'),yv=document.getElementById('yv');
-sl.addEventListener('input',function(){cY=+this.value;var sn=Math.round(cY/5)*5;cY=sn;this.value=sn;yv.textContent=cY;upd();});
+sl.addEventListener('input',function(){
+  var raw=sliderToYear(+this.value);
+  cY=snapYear(raw);
+  yv.textContent=cY;upd();
+});
 document.getElementById('pb').addEventListener('click',function(){
   if(pl){pl=false;this.textContent='\u518D\u751F';clearInterval(tm);return;}
   pl=true;this.textContent='\u505C\u6B62';
-  sl.value=600;cY=600;yv.textContent='600';upd();
+  cY=600;sl.value=0;yv.textContent='600';upd();
+  var sv=0;
   tm=setInterval(function(){
-    cY+=cY<1900?25:5;
-    if(cY>2050){cY=2050;pl=false;document.getElementById('pb').textContent='\u518D\u751F';clearInterval(tm);}
-    sl.value=cY;yv.textContent=cY;upd();
-  },cY<1900?200:400);
+    sv+=sv<400?8:3;
+    if(sv>1000){sv=1000;pl=false;document.getElementById('pb').textContent='\u518D\u751F';clearInterval(tm);}
+    cY=snapYear(sliderToYear(sv));
+    sl.value=sv;yv.textContent=cY;upd();
+  },150);
 });
 document.addEventListener('click',function(ev){if(!tt.contains(ev.target))tt.style.display='none';});
+
+(function drawEraBar(){
+  var bar=document.getElementById('eraBar');
+  var marks=[
+    {y:710,label:'奈良'},{y:794,label:'平安'},{y:1185,label:'鎌倉'},
+    {y:1573,label:'戦国'},{y:1603,label:'江戸'},{y:1868,label:'明治'},
+    {y:1920,label:'|近代▶'},{y:1945,label:'戦後'},{y:2000,label:'2000'}
+  ];
+  marks.forEach(function(m){
+    var pct=yearToSlider(m.y)/10;
+    var el=document.createElement('span');
+    el.style.cssText='position:absolute;left:'+pct+'%;transform:translateX(-50%);white-space:nowrap;';
+    if(m.y===1920)el.style.fontWeight='600';
+    el.textContent=m.label;
+    bar.appendChild(el);
+  });
+})();
 })();
 </script>
 </body>
