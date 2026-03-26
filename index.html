@@ -56,7 +56,10 @@ h1{font-size:22px;font-weight:500;letter-spacing:0.03em;}
   <span style="color:#378ADD;">薄い = 人口減少中</span>
   <span style="color:var(--tx3);">| 2020年以降は将来推計</span>
 </div>
-<div id="mp"></div>
+<div style="display:flex;gap:12px;align-items:flex-start;">
+<div id="mp" style="flex:1;"></div>
+<div id="beaker" style="width:48px;flex-shrink:0;"></div>
+</div>
 <p class="src">
   出典: 総務省統計局「国勢調査」各年次（1920-2020）、国立社会保障・人口問題研究所「将来推計人口」（2030-2050）<br>
   財政データ: 総務省「令和4年度 市町村別決算状況調」
@@ -73,7 +76,24 @@ var W=750,H=820;
 var pj=d3.geoMercator().center([137,37]).scale(1700).translate([W/2,H/2]);
 var pa=d3.geoPath(pj);
 var s=d3.select('#mp').append('svg').attr('viewBox','0 0 '+W+' '+H).attr('width','100%').style('display','block');
-var gM=s.append('g'),gB=s.append('g'),gL=s.append('g');
+var gM=s.append('g'),gFlow=s.append('g'),gB=s.append('g'),gL=s.append('g');
+
+var bkSvg=d3.select('#beaker').append('svg').attr('viewBox','0 0 48 700').attr('width','48').attr('height','100%').style('display','block');
+var BK_X=24,BK_TOP=30,BK_BOT=670,BK_W=20,BK_H=BK_BOT-BK_TOP;
+var BK_MAX=14000;
+bkSvg.append('rect').attr('x',BK_X-BK_W/2).attr('y',BK_TOP).attr('width',BK_W).attr('height',BK_H)
+  .attr('fill','none').attr('stroke',dk?'#555':'#ccc').attr('stroke-width',1).attr('rx',3);
+bkSvg.append('rect').attr('x',BK_X-BK_W/2+1).attr('y',BK_TOP).attr('width',BK_W-2).attr('id','bkFill')
+  .attr('fill',dk?'rgba(216,90,48,0.3)':'rgba(216,90,48,0.2)').attr('rx',2);
+var okuLine=BK_BOT-BK_H*(10000/BK_MAX);
+bkSvg.append('line').attr('x1',BK_X-BK_W/2-4).attr('x2',BK_X+BK_W/2+4).attr('y1',okuLine).attr('y2',okuLine)
+  .attr('stroke','#E24B4A').attr('stroke-width',1.5).attr('stroke-dasharray','4,2');
+bkSvg.append('text').attr('x',BK_X).attr('y',okuLine-5).attr('text-anchor','middle')
+  .attr('font-size','9px').attr('fill','#E24B4A').attr('font-family','-apple-system,sans-serif').text('1\u5104');
+bkSvg.append('text').attr('x',BK_X).attr('y',BK_TOP-8).attr('text-anchor','middle')
+  .attr('font-size','9px').attr('fill',dk?'#aaa':'#666').attr('font-family','-apple-system,sans-serif').attr('id','bkLabel').text('');
+bkSvg.append('text').attr('x',BK_X).attr('y',BK_BOT+16).attr('text-anchor','middle')
+  .attr('font-size','8px').attr('fill',dk?'#777':'#999').attr('font-family','-apple-system,sans-serif').text('\u7DCF\u4EBA\u53E3');
 var tt=document.getElementById('tt');
 var isMobile='ontouchstart' in window;
 
@@ -176,6 +196,7 @@ function upd(){
   var isFuture=y>2020;
   gB.selectAll('*').remove();
   gL.selectAll('*').remove();
+  gFlow.selectAll('*').remove();
 
   var data=P.map(function(pref){
     var pop=getPop(pref,y);
@@ -185,12 +206,57 @@ function upd(){
   }).sort(function(a,b){return a.pop-b.pop;});
 
   var totalPop=data.reduce(function(s,d){return s+d.pop;},0);
+
+  var fillH=BK_H*(totalPop/BK_MAX);
+  var fillY=BK_BOT-fillH;
+  d3.select('#bkFill').attr('y',fillY).attr('height',fillH);
+  d3.select('#bkLabel').text((totalPop/10).toFixed(0)+'\u4E07');
+
+  var growing=data.filter(function(d){return d.growth>50;}).sort(function(a,b){return b.growth-a.growth;}).slice(0,5);
+  var shrinking=data.filter(function(d){return d.growth<-30;}).sort(function(a,b){return a.growth-b.growth;}).slice(0,5);
+
+  if(growing.length>0&&shrinking.length>0){
+    var topTarget=growing[0];
+    var txy=pj([topTarget.pref.lo,topTarget.pref.la]);
+    shrinking.forEach(function(src){
+      var sxy=pj([src.pref.lo,src.pref.la]);
+      var mx=(sxy[0]+txy[0])/2,my=(sxy[1]+txy[1])/2;
+      var dx=txy[0]-sxy[0],dy=txy[1]-sxy[1];
+      var cx=mx-dy*0.2,cy=my+dx*0.2;
+      var pathStr='M'+sxy[0]+','+sxy[1]+' Q'+cx+','+cy+' '+txy[0]+','+txy[1];
+      var intensity=Math.min(1,Math.abs(src.growth)/200);
+      gFlow.append('path').attr('d',pathStr)
+        .attr('fill','none').attr('stroke',dk?'rgba(55,138,221,0.15)':'rgba(55,138,221,0.12)')
+        .attr('stroke-width',1+intensity*2);
+      for(var di=0;di<3;di++){
+        var dot=gFlow.append('circle').attr('r',1.5+intensity)
+          .attr('fill','#378ADD').attr('fill-opacity',0.5+intensity*0.3);
+        var p=gFlow.append('path').attr('d',pathStr).attr('fill','none').attr('stroke','none');
+        var pathNode=p.node();
+        var totalLen=pathNode.getTotalLength();
+        var offset=di/3;
+        (function(dotEl,pNode,tLen,off){
+          function animDot(){
+            dotEl.transition().duration(3000).ease(d3.easeLinear)
+              .attrTween('transform',function(){
+                return function(t){
+                  var pos=pNode.getPointAtLength(((t+off)%1)*tLen);
+                  return 'translate('+pos.x+','+pos.y+')';
+                };
+              }).on('end',animDot);
+          }
+          animDot();
+        })(dot,pathNode,totalLen,offset);
+      }
+    });
+  }
+
   var tokyoPop=data.filter(function(d){return TOKYO_CODES.indexOf(d.pref.c)>=0;}).reduce(function(s,d){return s+d.pop;},0);
   var maxPref=data[data.length-1];
 
-  document.getElementById('sPop').textContent=(totalPop/1000).toFixed(1)+'万人';
+  document.getElementById('sPop').textContent=(totalPop/10).toFixed(0)+'万人';
   document.getElementById('sTokyo').textContent=Math.round(tokyoPop/totalPop*100)+'%';
-  document.getElementById('sMax').textContent=maxPref.pref.n+' '+(maxPref.pop/1000).toFixed(0)+'万';
+  document.getElementById('sMax').textContent=maxPref.pref.n+' '+(maxPref.pop/10).toFixed(0)+'万';
 
   data.forEach(function(d){
     var xy=pj([d.pref.lo,d.pref.la]);
