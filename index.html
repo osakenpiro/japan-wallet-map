@@ -19,9 +19,7 @@ h1{font-size:20px;font-weight:500;}
 #yv{font-size:18px;font-weight:500;min-width:50px;text-align:center;color:var(--accent);}
 #era{font-size:12px;color:var(--tx2);min-width:60px;}
 #pb{font-size:12px;padding:5px 16px;background:none;border:1px solid var(--bd);border-radius:6px;color:var(--tx);cursor:pointer;}
-.row{display:flex;gap:8px;align-items:flex-start;}
 #mp{flex:1;}
-.bk-wrap{width:52px;flex-shrink:0;display:flex;align-items:stretch;}
 .stats{display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
 .stat{background:var(--card);border-radius:8px;padding:8px 12px;flex:1;min-width:100px;}
 .stat .lb{font-size:10px;color:var(--tx3);}
@@ -57,10 +55,7 @@ h1{font-size:20px;font-weight:500;}
   <span style="color:var(--blue);">青い流線</span> = 人口移動｜2020年以降は破線（将来推計）｜
   右のビーカー = 総人口（<span style="color:#E24B4A;">赤線=1億人</span>）
 </div>
-<div class="row">
 <div id="mp"></div>
-<div class="bk-wrap"><svg id="bk" viewBox="0 0 52 500" width="52" height="500" style="display:block;"></svg></div>
-</div>
 <p class="src">出典: 国勢調査(1920-2020)、国立社会保障・人口問題研究所(将来推計)、総務省「市町村別決算状況調」R4。近世以前の人口は鬼頭宏『人口から読む日本の歴史』等の推計。</p>
 <div class="ft"><a href="https://osakenpiro.github.io/boku-no-wakusei/" target="_blank">osakenpiro</a> / 『学問のすすめ -ルネサンス-』</div>
 </div>
@@ -70,11 +65,11 @@ h1{font-size:20px;font-weight:500;}
 <script>
 (function(){
 var dk=matchMedia('(prefers-color-scheme:dark)').matches;
-var W=700,H=780;
-var pj=d3.geoMercator().center([137,37]).scale(1650).translate([W/2,H/2]);
+var W=750,H=780;
+var pj=d3.geoMercator().center([137,37]).scale(1650).translate([W/2-25,H/2]);
 var pa=d3.geoPath(pj);
 var svg=d3.select('#mp').append('svg').attr('viewBox','0 0 '+W+' '+H).attr('width','100%').style('display','block');
-var gM=svg.append('g'),gFlow=svg.append('g'),gB=svg.append('g'),gL=svg.append('g'),gHist=svg.append('g');
+var gM=svg.append('g'),gFlow=svg.append('g'),gB=svg.append('g'),gL=svg.append('g'),gHist=svg.append('g'),gBK=svg.append('g');
 var tt=document.getElementById('tt');
 var isMobile='ontouchstart' in window;
 
@@ -150,23 +145,20 @@ var P=[
 ];
 var TOKYO_CODES=["13","14","11","12"];
 
-var bk=d3.select('#bk');
-var BK_T=40,BK_B=460,BK_H=BK_B-BK_T,BK_X=26,BK_W=22,BK_MAX=140000;
-bk.append('rect').attr('x',BK_X-BK_W/2).attr('y',BK_T).attr('width',BK_W).attr('height',BK_H)
+var BKX=720,BKT=80,BKB=680,BKH=BKB-BKT,BKW=24,BKMAX=140000;
+gBK.append('rect').attr('x',BKX-BKW/2).attr('y',BKT).attr('width',BKW).attr('height',BKH)
   .attr('fill','none').attr('stroke',dk?'#555':'#bbb').attr('stroke-width',1.2).attr('rx',4);
-var okuY=BK_B-BK_H*(100000/BK_MAX);
-bk.append('line').attr('x1',BK_X-BK_W/2-6).attr('x2',BK_X+BK_W/2+6).attr('y1',okuY).attr('y2',okuY)
+var okuY=BKB-BKH*(100000/BKMAX);
+gBK.append('line').attr('x1',BKX-BKW/2-6).attr('x2',BKX+BKW/2+6).attr('y1',okuY).attr('y2',okuY)
   .attr('stroke','#E24B4A').attr('stroke-width',1.8).attr('stroke-dasharray','4,2');
-bk.append('text').attr('x',BK_X).attr('y',okuY-6).attr('text-anchor','middle')
+gBK.append('text').attr('x',BKX).attr('y',okuY-6).attr('text-anchor','middle')
   .attr('font-size','10px').attr('font-weight','500').attr('fill','#E24B4A').text('1\u5104');
-bk.append('text').attr('id','bkLbl').attr('x',BK_X).attr('y',BK_T-10).attr('text-anchor','middle')
-  .attr('font-size','11px').attr('font-weight','500').attr('fill',dk?'#eee':'#1a1a1a');
-bk.append('text').attr('x',BK_X).attr('y',BK_B+18).attr('text-anchor','middle')
-  .attr('font-size','9px').attr('fill',dk?'#777':'#999').text('\u7DCF\u4EBA\u53E3');
-var bkTick5k=BK_B-BK_H*(50000/BK_MAX);
-bk.append('line').attr('x1',BK_X-BK_W/2).attr('x2',BK_X+BK_W/2).attr('y1',bkTick5k).attr('y2',bkTick5k)
+var t5k=BKB-BKH*(50000/BKMAX);
+gBK.append('line').attr('x1',BKX-BKW/2).attr('x2',BKX+BKW/2).attr('y1',t5k).attr('y2',t5k)
   .attr('stroke',dk?'#444':'#ccc').attr('stroke-width',0.5);
-bk.append('text').attr('x',BK_X+BK_W/2+3).attr('y',bkTick5k+3).attr('font-size','7px').attr('fill',dk?'#666':'#aaa').text('5000\u4E07');
+gBK.append('text').attr('x',BKX+BKW/2+3).attr('y',t5k+3).attr('font-size','7px').attr('fill',dk?'#666':'#aaa').text('5000\u4E07');
+gBK.append('text').attr('x',BKX).attr('y',BKB+16).attr('text-anchor','middle')
+  .attr('font-size','9px').attr('fill',dk?'#777':'#999').text('\u7DCF\u4EBA\u53E3');
 
 function getHistPop(y){
   for(var i=0;i<HIST_POP.length-1;i++){
@@ -196,27 +188,31 @@ function getEra(y){for(var i=ERAS.length-1;i>=0;i--){if(y>=ERAS[i].start)return 
 function bubbleR(pop){return Math.sqrt(pop)*0.25;}
 
 function updateBeaker(totalPop, capitalPop, era){
-  var fillH=BK_H*Math.min(1,totalPop/BK_MAX);
-  var capH=capitalPop?BK_H*Math.min(1,capitalPop/BK_MAX):0;
+  gBK.selectAll('.bkDyn').remove();
+  var fillH=BKH*Math.min(1,totalPop/BKMAX);
+  var capH=capitalPop?BKH*Math.min(1,capitalPop/BKMAX):0;
   var restH=fillH-capH;
   var eraColors={
-    '飛鳥時代':'#97C459','奈良時代':'#97C459','平安時代':'#B07CC6',
-    '鎌倉時代':'#5A9BD5','室町時代':'#B07CC6','安土桃山':'#EF9F27',
-    '江戸時代':'#5A9BD5','明治以降':'#D85A30'
+    '\u98DB\u9CE5\u6642\u4EE3':'#97C459','\u5948\u826F\u6642\u4EE3':'#97C459','\u5E73\u5B89\u6642\u4EE3':'#B07CC6',
+    '\u938C\u5009\u6642\u4EE3':'#5A9BD5','\u5BA4\u753A\u6642\u4EE3':'#B07CC6','\u5B89\u571F\u6843\u5C71':'#EF9F27',
+    '\u6C5F\u6238\u6642\u4EE3':'#5A9BD5','\u660E\u6CBB\u4EE5\u964D':'#D85A30'
   };
   var capColor=eraColors[era.name]||'#D85A30';
-  d3.select('#bkFill').remove();d3.select('#bkCapFill').remove();
-  bk.insert('rect','#bkLbl').attr('id','bkFill')
-    .attr('x',BK_X-BK_W/2+1.5).attr('width',BK_W-3).attr('rx',3)
-    .attr('y',BK_B-fillH).attr('height',restH>0?restH:fillH)
-    .attr('fill',dk?'rgba(150,150,150,0.25)':'rgba(150,150,150,0.2)');
-  if(capH>0){
-    bk.insert('rect','#bkLbl').attr('id','bkCapFill')
-      .attr('x',BK_X-BK_W/2+1.5).attr('width',BK_W-3).attr('rx',0)
-      .attr('y',BK_B-capH).attr('height',capH)
-      .attr('fill',capColor).attr('fill-opacity',dk?0.5:0.4);
+  if(restH>0){
+    gBK.append('rect').attr('class','bkDyn')
+      .attr('x',BKX-BKW/2+1.5).attr('width',BKW-3).attr('rx',2)
+      .attr('y',BKB-fillH).attr('height',restH)
+      .attr('fill',dk?'rgba(150,150,150,0.3)':'rgba(150,150,150,0.2)');
   }
-  d3.select('#bkLbl').text(Math.round(totalPop/10)+'\u4E07');
+  if(capH>0){
+    gBK.append('rect').attr('class','bkDyn')
+      .attr('x',BKX-BKW/2+1.5).attr('width',BKW-3).attr('rx',0)
+      .attr('y',BKB-capH).attr('height',capH)
+      .attr('fill',capColor).attr('fill-opacity',dk?0.55:0.45);
+  }
+  gBK.append('text').attr('class','bkDyn').attr('x',BKX).attr('y',BKT-10).attr('text-anchor','middle')
+    .attr('font-size','11px').attr('font-weight','500').attr('fill',dk?'#eee':'#1a1a1a')
+    .text(Math.round(totalPop/10)+'\u4E07');
 }
 
 function showTT(html,ex,ey){
