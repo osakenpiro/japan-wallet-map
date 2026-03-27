@@ -34,6 +34,7 @@ h1{font-size:20px;font-weight:500;}
 #b1.on{background:var(--accent);border-color:var(--accent);}
 #b2.on{background:#6B8E5A;border-color:#6B8E5A;}
 #b3.on{background:#4A90D9;border-color:#4A90D9;}
+#b4.on{background:#C0392B;border-color:#C0392B;}
 #lb.on{background:#D4A017;border-color:#D4A017;}
 </style>
 </head>
@@ -55,6 +56,7 @@ h1{font-size:20px;font-weight:500;}
   <button id="b1" class="lbtn on">① 人口</button>
   <button id="b2" class="lbtn">② 地理</button>
   <button id="b3" class="lbtn">③ 交通</button>
+  <button id="b4" class="lbtn">④ 年齢構造</button>
   <button id="lb" class="lbtn">⑤ ロックイン</button>
 </div>
 <div class="stats">
@@ -62,6 +64,7 @@ h1{font-size:20px;font-weight:500;}
   <div class="stat"><div class="lb">東京圏シェア</div><div class="vl" style="color:var(--accent);" id="sTokyo">—</div></div>
   <div class="stat"><div class="lb">政治の中心</div><div class="vl" style="color:var(--blue);" id="sCenter">—</div></div>
   <div class="stat" id="sLockWrap" style="display:none;"><div class="lb">上場企業 東京集中</div><div class="vl" style="color:#D4A017;" id="sLock">—</div></div>
+  <div class="stat" id="sAgeWrap" style="display:none;"><div class="lb">全国 生産年齢率</div><div class="vl" style="color:#C0392B;" id="sAge">—</div></div>
 </div>
 <div class="leg" id="legPop">
   円 = 人口（<span style="color:var(--accent);">オレンジ=増加</span> / <span style="color:var(--blue);">青=減少</span>）｜
@@ -78,8 +81,11 @@ h1{font-size:20px;font-weight:500;}
 <div class="leg" id="legTra" style="display:none;">
   ③ 交通: <span style="color:#4A90D9;">━</span>新幹線 <span style="color:#E24B4A;">✈</span>主要空港 — すべての路線が東京に向かう放射構造
 </div>
+<div class="leg" id="legAge" style="display:none;">
+  ④ 年齢構造: <span style="color:#1A6B3C;">■</span>→<span style="color:#D4AC0D;">■</span>→<span style="color:#C0392B;">■</span> 緑=生産年齢(15-64歳)多い → 赤=高齢化深刻 — 秋田51.7%〜東京66.8%。数字=生産年齢率(%)
+</div>
 <div id="mp"></div>
-<p class="src">出典: 国勢調査(1920-2020)、国立社会保障・人口問題研究所(将来推計)、総務省「市町村別決算状況調」R4。近世以前の人口は鬼頭宏『人口から読む日本の歴史』等の推計。<br>②地理: 国土交通省 国土数値情報。③交通: 新幹線各路線の開業年、国土交通省 空港一覧。⑤ロックイン: 上場企業本社数はロードサイド熊本(2025年版)、国立大学は文部科学省(2024年)。</p>
+<p class="src">出典: 国勢調査(1920-2020)、国立社会保障・人口問題研究所(将来推計)、総務省「市町村別決算状況調」R4。近世以前の人口は鬼頭宏『人口から読む日本の歴史』等の推計。<br>②地理: 国土交通省 国土数値情報。③交通: 新幹線各路線の開業年、国土交通省 空港一覧。④年齢構造: 総務省統計局 人口推計（2024年10月1日現在）第3表。⑤ロックイン: 上場企業本社数はロードサイド熊本(2025年版)、国立大学は文部科学省(2024年)。</p>
 <div class="ft"><a href="https://osakenpiro.github.io/boku-no-wakusei/" target="_blank">osakenpiro</a> / 『学問のすすめ -ルネサンス-』</div>
 </div>
 <div id="tt"></div>
@@ -92,7 +98,7 @@ var W=750,H=780;
 var pj=d3.geoMercator().center([137,37]).scale(1650).translate([W/2-25,H/2]);
 var pa=d3.geoPath(pj);
 var svg=d3.select('#mp').append('svg').attr('viewBox','0 0 '+W+' '+H).attr('width','100%').style('display','block');
-var gM=svg.append('g'),gGeo=svg.append('g'),gLK=svg.append('g'),gTra=svg.append('g'),gFlow=svg.append('g'),gB=svg.append('g'),gL=svg.append('g'),gHist=svg.append('g'),gBK=svg.append('g');
+var gM=svg.append('g'),gGeo=svg.append('g'),gAge=svg.append('g'),gLK=svg.append('g'),gTra=svg.append('g'),gFlow=svg.append('g'),gB=svg.append('g'),gL=svg.append('g'),gHist=svg.append('g'),gBK=svg.append('g');
 var tt=document.getElementById('tt');
 var isMobile='ontouchstart' in window;
 
@@ -180,7 +186,27 @@ var LOCKIN={
 };
 var TOTAL_CO=Object.values(LOCKIN).reduce(function(s,d){return s+d.co;},0);
 var showLock=false;
-var showGeo=false,showTra=false,showPop=true;
+var showGeo=false,showTra=false,showPop=true,showAge=false;
+
+// ④ 年齢構造 data — 人口推計(2024年10月1日現在)第3表 都道府県×年齢3区分(千人)
+var AGE3={
+"01":{u15:497,w:2868,o65:1677,o75:945},"02":{u15:114,w:634,o65:416,o75:227},"03":{u15:115,w:624,o65:405,o75:225},
+"04":{u15:243,w:1340,o65:665,o75:357},"05":{u15:79,w:463,o65:354,o75:198},"06":{u15:105,w:546,o65:360,o75:199},
+"07":{u15:184,w:972,o65:587,o75:311},"08":{u15:303,w:1637,o65:866,o75:477},"09":{u15:203,w:1106,o65:575,o75:309},
+"10":{u15:203,w:1098,o65:588,o75:333},"11":{u15:814,w:4500,o65:2018,o75:1164},"12":{u15:688,w:3804,o65:1759,o75:1020},
+"13":{u15:1494,w:9469,o65:3215,o75:1876},"14":{u15:1008,w:5817,o65:2400,o75:1408},"15":{u15:220,w:1162,o65:717,o75:402},
+"16":{u15:105,w:561,o65:331,o75:197},"17":{u15:124,w:636,o65:337,o75:196},"18":{u15:86,w:417,o65:235,o75:133},
+"19":{u15:85,w:453,o65:253,o75:143},"20":{u15:222,w:1111,o65:654,o75:385},"21":{u15:217,w:1096,o65:602,o75:348},
+"22":{u15:391,w:2035,o65:1101,o75:629},"23":{u15:906,w:4626,o65:1928,o75:1121},"24":{u15:192,w:990,o65:529,o75:305},
+"25":{u15:179,w:841,o65:382,o75:215},"26":{u15:266,w:1502,o65:752,o75:453},"27":{u15:968,w:5371,o65:2418,o75:1458},
+"28":{u15:614,w:3112,o65:1611,o75:941},"29":{u15:142,w:720,o65:423,o75:249},"30":{u15:96,w:481,o65:303,o75:177},
+"31":{u15:63,w:289,o65:179,o75:100},"32":{u15:75,w:341,o65:226,o75:131},"33":{u15:215,w:1045,o65:571,o75:337},
+"34":{u15:321,w:1569,o65:824,o75:482},"35":{u15:138,w:688,o65:455,o75:267},"36":{u15:71,w:369,o65:245,o75:138},
+"37":{u15:104,w:512,o65:301,o75:175},"38":{u15:138,w:697,o65:440,o75:252},"39":{u15:67,w:348,o65:240,o75:142},
+"40":{u15:632,w:3004,o65:1456,o75:811},"41":{u15:100,w:436,o65:252,o75:137},"42":{u15:149,w:669,o65:434,o75:238},
+"43":{u15:214,w:931,o65:553,o75:306},"44":{u15:124,w:588,o65:374,o75:213},"45":{u15:129,w:553,o65:351,o75:193},
+"46":{u15:191,w:817,o65:524,o75:282},"47":{u15:231,w:880,o65:355,o75:172}
+};
 
 // ② 地理 data — 可住地面積率(%) 総務省「統計でみる都道府県のすがた2023」(2021年データ)
 var TERRAIN={
@@ -207,6 +233,33 @@ function terrainColor(pct){
     if(pct<60) return '#C0D8A8';
     return '#D8D8C8';           // urban beige-grey
   }
+}
+
+// ④ 年齢構造 color: working ratio 51%→67% mapped green(young)→yellow→red(aged)
+function ageColor(code){
+  var a=AGE3[code];if(!a)return '#888';
+  var t=a.u15+a.w+a.o65, wr=a.w/t*100;
+  // normalize: 51(秋田)=0 → 67(東京)=1
+  var norm=Math.max(0,Math.min(1,(wr-51)/16));
+  if(dk){
+    if(norm>0.7) return '#1A5C2E'; // green=young workforce
+    if(norm>0.4) return '#6B6B1A'; // yellow=middle
+    if(norm>0.2) return '#8B4513'; // orange=aging
+    return '#6B1A1A';              // red=severely aged
+  } else {
+    if(norm>0.7) return '#27AE60';
+    if(norm>0.4) return '#F1C40F';
+    if(norm>0.2) return '#E67E22';
+    return '#C0392B';
+  }
+}
+function ageWorkingRatio(code){
+  var a=AGE3[code];if(!a)return 0;
+  return Math.round(a.w/(a.u15+a.w+a.o65)*1000)/10;
+}
+function ageElderlyRatio(code){
+  var a=AGE3[code];if(!a)return 0;
+  return Math.round(a.o65/(a.u15+a.w+a.o65)*1000)/10;
 }
 
 // ③ 交通 data
@@ -489,7 +542,8 @@ function upd(){
         var ch=d.growth>0?'+':'';
         var lk=LOCKIN[d.pref.c];
         var lkHtml=showLock&&lk?'<br><span style="color:#D4A017">\u4E0A\u5834'+lk.co+'\u793E</span> <span style="color:#8B5CF6">\u5927\u5B66'+lk.uni+'</span>':'';
-        showTT('<b>'+d.pref.n+'</b><br>'+d.pop.toLocaleString()+'\u5343\u4EBA\uFF08'+(d.pop/10).toFixed(0)+'\u4E07\uFF09<br><span style="color:'+(d.growth>0?'#D85A30':'#378ADD')+'">10\u5E74\u5909\u5316: '+ch+d.growth.toLocaleString()+'\u5343</span>'+(isFuture?'<br><span style="color:var(--tx3)">\u2192 \u5C06\u6765\u63A8\u8A08</span>':'')+lkHtml,ev.clientX,ev.clientY);
+        var ageHtml=showAge&&AGE3[d.pref.c]?'<br><span style="color:#C0392B">\u751F\u7523\u5E74\u9F62'+ageWorkingRatio(d.pref.c)+'% \u9AD8\u9F62\u8005'+ageElderlyRatio(d.pref.c)+'%</span>':'';
+        showTT('<b>'+d.pref.n+'</b><br>'+d.pop.toLocaleString()+'\u5343\u4EBA\uFF08'+(d.pop/10).toFixed(0)+'\u4E07\uFF09<br><span style="color:'+(d.growth>0?'#D85A30':'#378ADD')+'">10\u5E74\u5909\u5316: '+ch+d.growth.toLocaleString()+'\u5343</span>'+(isFuture?'<br><span style="color:var(--tx3)">\u2192 \u5C06\u6765\u63A8\u8A08</span>':'')+lkHtml+ageHtml,ev.clientX,ev.clientY);
       }})
       .on('mousemove',function(ev){if(!isMobile)showTT(tt.innerHTML,ev.clientX,ev.clientY);})
       .on('mouseleave',function(){tt.style.display='none';})
@@ -602,6 +656,54 @@ function drawTra(){
     .attr('fill','none').attr('stroke','#E24B4A').attr('stroke-width',2).attr('stroke-dasharray','2,2');
 }
 
+// ④ 年齢構造 toggle
+document.getElementById('b4').addEventListener('click',function(){
+  showAge=!showAge;
+  this.classList.toggle('on',showAge);
+  document.getElementById('legAge').style.display=showAge?'':'none';
+  document.getElementById('sAgeWrap').style.display=showAge?'':'none';
+  if(showAge&&gAge.selectAll('*').empty())drawAge();
+  gAge.style('display',showAge?'':'none');
+  if(showAge) document.getElementById('sAge').textContent='59.6%';
+});
+function drawAge(){
+  d3.json('https://raw.githubusercontent.com/dataofjapan/land/master/japan.topojson').then(function(jp){
+    var prefs=topojson.feature(jp,jp.objects.japan).features;
+    prefs.forEach(function(f){
+      var id=String(f.properties.id).padStart(2,'0');
+      var wr=ageWorkingRatio(id), er=ageElderlyRatio(id);
+      var a=AGE3[id];
+      gAge.append('path').datum(f).attr('d',pa)
+        .attr('fill',ageColor(id)).attr('stroke',dk?'#333':'#999').attr('stroke-width',0.3)
+        .attr('opacity',0.85)
+        .style('pointer-events','all').style('cursor','pointer')
+        .on('mouseenter',function(ev){if(!isMobile){
+          var tot=a?(a.u15+a.w+a.o65):0;
+          var label=wr>=63?'\u82E5\u3044\u52B4\u50CD\u529B':wr>=59?'\u5168\u56FD\u5E73\u5747':wr>=55?'\u9AD8\u9F62\u5316\u9032\u884C':'\u6DF1\u523B\u306A\u9AD8\u9F62\u5316';
+          showTT('<b>'+f.properties.nam_ja+'</b><br>'
+            +'\u751F\u7523\u5E74\u9F62(15-64): <b>'+wr+'%</b> \u2190 '+label+'<br>'
+            +'\u9AD8\u9F62\u8005(65+): '+er+'%'
+            +(a?'<br>\u4EBA\u53E3: '+(tot/10).toFixed(0)+'\u4E07\u4EBA':'')
+            +'<br>\u5B9F\u8CEA\u7D4C\u6E08\u4EBA\u53E3: '+(a?Math.round(a.w/10):0)+'\u4E07\u4EBA',ev.clientX,ev.clientY);
+        }})
+        .on('mousemove',function(ev){if(!isMobile)showTT(tt.innerHTML,ev.clientX,ev.clientY);})
+        .on('mouseleave',function(){tt.style.display='none';});
+      // Label: show working ratio %
+      var centroid=pa.centroid(f);
+      if(centroid&&!isNaN(centroid[0])&&wr>0){
+        gAge.append('text').attr('x',centroid[0]).attr('y',centroid[1]+3)
+          .attr('text-anchor','middle').attr('font-size','8px').attr('font-weight','700')
+          .attr('fill',dk?'#eee':'#fff').attr('font-family','-apple-system,sans-serif')
+          .attr('pointer-events','none').attr('paint-order','stroke')
+          .attr('stroke',dk?'#000':'#333').attr('stroke-width','2px')
+          .text(wr.toFixed(0)+'%');
+      }
+    });
+    gAge.append('path').datum(topojson.mesh(jp,jp.objects.japan,function(a,b){return a!==b;}))
+      .attr('d',pa).attr('fill','none').attr('stroke',dk?'#555':'#aaa').attr('stroke-width',0.5);
+  });
+}
+
 (function drawEraBar(){
   var bar=document.getElementById('eraBar');
   var marks=[
@@ -622,3 +724,4 @@ function drawTra(){
 </script>
 </body>
 </html>
+
